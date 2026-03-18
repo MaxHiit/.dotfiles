@@ -1,0 +1,53 @@
+# Install all casks in /Applications
+cask_args appdir: "/Applications"
+
+# Shell
+brew "zsh"
+brew "stow"
+
+# Terminal tools
+brew "starship"           # prompt
+brew "tmux"               # terminal multiplexer
+brew "zoxide"             # smart cd
+brew "fzf"                # fuzzy finder
+brew "bat"                # better cat
+brew "eza"                # better ls
+brew "ripgrep"            # better grep
+brew "fd"                 # better find
+brew "delta"              # better git diff
+brew "tree"               # directory tree viewer
+
+# Editors
+brew "neovim"
+
+# Git
+brew "git"
+brew "lazygit"            # git TUI
+
+# Dev tools
+brew "mise"               # runtime version manager
+brew "uv"                 # python package manager + tool installer
+brew "direnv"             # per-project env vars
+brew "jq"                 # JSON processor
+brew "opencode"           # AI CLI
+
+# Containers
+brew "lazydocker"         # docker TUI
+
+# System
+brew "bottom"             # better htop
+brew "fastfetch"          # system info
+
+# Apps (GUI)
+cask "ghostty"            # terminal
+cask "1password"          # password manager
+cask "raycast"            # spotlight replacement
+cask "figma"              # design tool
+cask "discord"            # messaging
+cask "yaak"               # API client
+cask "helium-browser"     # helium browser
+cask "ungoogled-chromium" # privacy-focused chromium
+cask "tableplus"          # lightweight database GUI
+cask "datagrip"           # full-featured database IDE
+cask "orbstack"           # docker + linux VMs
+cask "utm"                # full VMs
