@@ -1,12 +1,76 @@
+# Git configuration
+# See https://git-scm.com/docs/git-config
+
+[core]
+	editor = nvim
+	# Speed up git status in large repos
+	fsmonitor = true
+
+[init]
+	defaultBranch = main
+
+[pull]
+	# Rebase instead of merge on pull
+	rebase = true
+
+[push]
+	# Automatically set upstream branch on first push
+	autoSetupRemote = true
+
+[fetch]
+	# Remove remote-tracking branches that no longer exist
+	prune = true
+	# Write commit graph for faster git log
+	writeCommitGraph = true
+
+[rebase]
+	# Automatically update dependent branches when rebasing
+	updateRefs = true
+
+[diff]
+	# Clearer diffs on moved/edited lines
+	algorithm = histogram
+	# Highlight moved blocks in diffs
+	colorMoved = plain
+	# More intuitive refs in diff output (i vs w — index vs worktree)
+	mnemonicPrefix = true
+
+[commit]
+	# Show diff in commit message editor
+	verbose = true
+
+[branch]
+	# Sort branches by most recent commit first
+	sort = -committerdate
+
+[column]
+	# Display output in columns when possible (git branch, git tag…)
+	ui = auto
+
+[tag]
+	# Sort version numbers as expected (v1.10 after v1.9)
+	sort = -version:refname
+
+[rerere]
+	# Record and reuse conflict resolutions automatically
+	enabled = true
+	autoupdate = true
+
 [alias]
 	co = checkout
 	br = branch
 	ci = commit
 	st = status
-[pull]
-	rebase = true
-[init]
-	defaultBranch = main
+	# Pretty log with graph
+	lg = log --oneline --decorate --graph
+	# Unstage all changes and stash them
+	nuke = "!git add --all && git stash && git stash clear"
+
 [user]
 	name = maxhiit
 	email = pro.maxcode@gmail.com
+
+# Work-specific config — loaded only for repos under ~/Code/work/
+# Create ~/.config/git/work_config with your work email/name if needed
+[includeIf "gitdir:~/Code/work/"]
+	path = ~/.config/git/work_config
