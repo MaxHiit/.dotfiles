@@ -1,0 +1,4 @@
+# Load each file inside fns/
+for f in ~/.config/zsh/fns/*; do
+  [[ -f "$f" ]] && source "$f"
+done

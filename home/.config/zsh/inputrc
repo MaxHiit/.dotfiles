@@ -1,0 +1,22 @@
+# Case-insensitive completion (also set in shell, kept here for clarity)
+zstyle ':completion:*' matcher-list 'm:{a-z}={A-Z}'
+
+# Add trailing slash when completing symlinks to directories
+setopt LIST_TYPES
+
+# Show completion prefix before cycling candidates
+setopt COMPLETE_IN_WORD
+
+# Cycle forward through completion candidates
+bindkey '^I'    menu-complete
+# Cycle backward through completion candidates
+bindkey '^[[Z'  reverse-menu-complete
+
+# Arrow up/down: match typed prefix against history
+bindkey '^[[A'  history-beginning-search-backward
+bindkey '^[[B'  history-beginning-search-forward
+
+# Arrow left/right: move character by character
+bindkey '^[[C'  forward-char
+bindkey '^[[D'  backward-char
+

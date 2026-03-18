@@ -1,0 +1,60 @@
+add_newline = true
+command_timeout = 200
+# format = "[$directory$git_branch$git_status]($style)$character"
+# format = "$character"
+# right_format = "$git_status $git_branch $directory"
+format = """$python $character"""
+
+# move the rest of the prompt to the right
+right_format = """$git_status$git_branch$directory"""
+
+[character]
+error_symbol = "[󰘧](bold red)"
+success_symbol = "[󰘧](bold cyan)"
+
+[directory]
+format = "[  ┃ $path ](bg:cyan bold fg:#3c3836)"
+style = "bg:cyan italic bold fg:#3c3836"
+truncation_length = 2
+# truncation_symbol = "…/"
+# repo_root_style = "bold cyan"
+# repo_root_format = "[$repo_root]($repo_root_style)[$path]($style)[$read_only]($read_only_style) "
+
+[git_branch]
+format = "[ $branch ]($style) "
+style = "bg:cyan italic bold fg:#3c3836"
+
+[git_status]
+format     = '[$all_status]($style)'
+style      = "cyan"
+ahead      = "⇡${count} "
+diverged   = "⇕⇡${ahead_count}⇣${behind_count} "
+behind     = "⇣${count} "
+conflicted = " "
+up_to_date = " "
+untracked  = "? "
+modified   = " "
+stashed    = ""
+staged     = ""
+renamed    = ""
+deleted    = ""
+
+# [python]
+# Afficher seulement si un projet Python est détecté
+# detect_virtualenv = true
+# Optionnel : vous pouvez également vérifier un fichier spécifique
+# (comme pyproject.toml, requirements.txt, Pipfile)
+# detect_files = ["pyproject.toml", "requirements.txt", "Pipfile"]
+# format = "🐍 [$version]($style) "
+# style = "bold green"
+# Changer la couleur si dans un venv
+# venv_style = "bold cyan"
+# Optionnel : afficher le nom du venv
+# venv_name = true
+
+[python]
+symbol = ""
+detect_extensions = ['py', 'ipynb']
+detect_files = ['.python-version', 'Pipfile', '__init__.py', 'pyproject.toml', 'requirements.txt', 'setup.py', 'tox.ini']
+style = "bg:cyan italic bold fg:#3c3836"
+format = "[  ┃ $version $virtualenv ](bg:cyan bold fg:#3c3836)"

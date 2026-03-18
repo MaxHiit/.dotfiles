@@ -1,0 +1,20 @@
+# Activate mise (runtime version manager)
+if command -v mise &> /dev/null; then
+  eval "$(mise activate zsh)"
+fi
+
+# Activate starship prompt
+if command -v starship &> /dev/null; then
+  eval "$(starship init zsh)"
+fi
+
+# Activate zoxide (smart cd)
+if command -v zoxide &> /dev/null; then
+  eval "$(zoxide init zsh)"
+fi
+
+# Activate fzf keybindings and completion
+if command -v fzf &> /dev/null; then
+  source <(fzf --zsh)
+fi
+

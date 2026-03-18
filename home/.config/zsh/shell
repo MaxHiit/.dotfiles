@@ -1,0 +1,32 @@
+# History file location
+HISTFILE="$HOME/.local/share/zsh/history"
+HISTSIZE=32768
+SAVEHIST="${HISTSIZE}"
+
+# Do not save duplicate entries
+setopt HIST_IGNORE_DUPS
+
+# Do not save entries starting with a space
+setopt HIST_IGNORE_SPACE
+
+# Share history between all sessions
+setopt SHARE_HISTORY
+
+# Append to history file instead of overwriting
+setopt APPEND_HISTORY
+
+# Ask before showing more than 200 completion candidates
+LISTMAX=200
+
+# Load and initialize the completion system
+autoload -Uz compinit && compinit
+
+# Case-insensitive completion
+zstyle ':completion:*' matcher-list 'm:{a-z}={A-Z}'
+
+# Show completion menu on first Tab
+zstyle ':completion:*' menu select
+
+# Use LS_COLORS for completion list colors
+zstyle ':completion:*' list-colors ${(s.:.)LS_COLORS}
+
