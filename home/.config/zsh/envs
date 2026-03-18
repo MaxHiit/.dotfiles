@@ -6,9 +6,6 @@ export SUDO_EDITOR="nvim"
 # Bat theme
 export BAT_THEME="ansi"
 
-# Starship config location
-export STARSHIP_CONFIG="$HOME/.config/starship.toml"
-
 # PATH
 export PATH="$HOME/.local/bin:$PATH"
 export PATH="$HOME/.opencode/bin:$PATH"

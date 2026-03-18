@@ -1,4 +1,6 @@
-# Load each file inside fns/
+# Load each file inside fns/ — skip if folder is empty
+setopt NULL_GLOB
 for f in ~/.config/zsh/fns/*; do
   [[ -f "$f" ]] && source "$f"
 done
+unsetopt NULL_GLOB
