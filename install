@@ -1,0 +1,557 @@
+#!/usr/bin/env bash
+
+set -euo pipefail
+
+# ─────────────────────────────────────────────
+# Colors
+# ─────────────────────────────────────────────
+readonly RED='\033[0;31m'
+readonly GREEN='\033[0;32m'
+readonly YELLOW='\033[0;33m'
+readonly BLUE='\033[0;34m'
+readonly CYAN='\033[0;36m'
+readonly RESET='\033[0m'
+readonly BOLD='\033[1m'
+
+# ─────────────────────────────────────────────
+# Metadata
+# ─────────────────────────────────────────────
+readonly SCRIPT_NAME="install"
+readonly VERSION="1.0.0"
+DOTFILES_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+readonly DOTFILES_DIR
+readonly PACKAGES_DIR="${DOTFILES_DIR}/packages"
+readonly HOME_DIR="${DOTFILES_DIR}/home"
+
+# Progress
+CURRENT_STEP=0
+TOTAL_STEPS=6
+
+# ─────────────────────────────────────────────
+# Helpers
+# ─────────────────────────────────────────────
+print_header() {
+  echo -e "\n${BOLD}${BLUE}==>${RESET} ${BOLD}$1${RESET}"
+}
+
+print_success() {
+  echo -e "${GREEN}✓${RESET} $1"
+}
+
+print_error() {
+  echo -e "${RED}✗${RESET} $1" >&2
+}
+
+print_warning() {
+  echo -e "${YELLOW}⚠${RESET} $1"
+}
+
+print_info() {
+  echo -e "${CYAN}ℹ${RESET} $1"
+}
+
+print_step() {
+  ((CURRENT_STEP++))
+  echo -e "\n${BOLD}[${CURRENT_STEP}/${TOTAL_STEPS}]${RESET} $1"
+}
+
+command_exists() {
+  command -v "$1" >/dev/null 2>&1
+}
+
+confirm() {
+  local prompt="${1:-Continue?}"
+  local default="${2:-n}"
+
+  if [[ "$default" == "y" ]]; then
+    prompt="$prompt [Y/n]: "
+  else
+    prompt="$prompt [y/N]: "
+  fi
+
+  read -r -p "$prompt" response
+
+  case "$response" in
+  [yY][eE][sS] | [yY]) return 0 ;;
+  [nN][oO] | [nN]) return 1 ;;
+  "")
+    [[ "$default" == "y" ]] && return 0 || return 1
+    ;;
+  *) return 1 ;;
+  esac
+}
+
+# ─────────────────────────────────────────────
+# Step 1 — Homebrew
+# ─────────────────────────────────────────────
+install_homebrew() {
+  print_step "Installing Homebrew"
+
+  if command_exists brew; then
+    print_success "Homebrew is already installed"
+    return 0
+  fi
+
+  print_info "Installing Homebrew..."
+
+  local log_file
+  log_file=$(mktemp)
+
+  if NONINTERACTIVE=1 /bin/bash -c \
+    "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)" \
+    >"$log_file" 2>&1; then
+
+    print_success "Homebrew installed successfully"
+
+    # Configure Homebrew for the current session
+    if [[ "$(uname -m)" == "arm64" ]]; then
+      eval "$(/opt/homebrew/bin/brew shellenv)"
+    else
+      eval "$(/usr/local/bin/brew shellenv)"
+    fi
+    print_success "Homebrew environment configured"
+  else
+    print_error "Homebrew installation failed"
+    print_info "Last 20 lines of output:"
+    tail -20 "$log_file" | while IFS= read -r line; do
+      echo "  $line"
+    done
+    rm "$log_file"
+    return 1
+  fi
+
+  rm "$log_file"
+}
+
+# ─────────────────────────────────────────────
+# Step 2 — Packages
+# ─────────────────────────────────────────────
+install_packages() {
+  print_step "Installing packages from Brewfile"
+
+  if [[ ! -f "${PACKAGES_DIR}/bundle" ]]; then
+    print_error "Bundle file not found at ${PACKAGES_DIR}/bundle"
+    return 1
+  fi
+
+  print_info "Installing packages..."
+
+  if brew bundle --file="${PACKAGES_DIR}/bundle"; then
+    print_success "All packages installed successfully"
+    return 0
+  fi
+
+  # If brew bundle fails, try packages one by one
+  print_warning "Some packages failed — retrying individually..."
+
+  local failed=()
+  local installed=0
+
+  while IFS= read -r line; do
+    [[ "$line" =~ ^[[:space:]]*# ]] && continue
+    [[ -z "${line// /}" ]] && continue
+
+    if [[ "$line" =~ ^brew[[:space:]]+\"([^\"]+)\" ]]; then
+      local pkg="${BASH_REMATCH[1]}"
+      if brew install "$pkg" 2>/dev/null; then
+        ((++installed))
+      else
+        print_warning "Failed: $pkg"
+        failed+=("brew:$pkg")
+      fi
+
+    elif [[ "$line" =~ ^cask[[:space:]]+\"([^\"]+)\" ]]; then
+      local pkg="${BASH_REMATCH[1]}"
+      if brew install --cask "$pkg" 2>/dev/null; then
+        ((++installed))
+      else
+        print_warning "Failed: $pkg"
+        failed+=("cask:$pkg")
+      fi
+    fi
+  done <"${PACKAGES_DIR}/bundle"
+
+  if [[ ${#failed[@]} -gt 0 ]]; then
+    print_warning "${#failed[@]} packages failed to install:"
+    printf "  - %s\n" "${failed[@]}"
+
+    # Save failed packages for later retry
+    local failed_file="${PACKAGES_DIR}/failed_$(date +%Y%m%d_%H%M%S).txt"
+    printf "%s\n" "${failed[@]}" >"$failed_file"
+    print_info "Saved to: $failed_file — run './install retry' to retry"
+  fi
+
+  print_success "Installed $installed packages"
+}
+
+# ─────────────────────────────────────────────
+# Step 3 — Stow dotfiles
+# ─────────────────────────────────────────────
+stow_dotfiles() {
+  print_step "Stowing dotfiles"
+
+  if ! command_exists stow; then
+    print_error "GNU Stow is not installed"
+    print_info "Install it first: brew install stow"
+    return 1
+  fi
+
+  # Detect existing files that would conflict
+  local backup_dir="${DOTFILES_DIR}/backups/$(date +%Y%m%d_%H%M%S)"
+  local to_backup=()
+
+  while IFS= read -r -d '' file; do
+    local rel="${file#"${HOME_DIR}"/}"
+    local target="${HOME}/${rel}"
+    if [[ -e "$target" && ! -L "$target" ]]; then
+      to_backup+=("$rel")
+    fi
+  done < <(find "${HOME_DIR}" -type f -print0)
+
+  if [[ ${#to_backup[@]} -gt 0 ]]; then
+    print_warning "These files will be replaced by symlinks:"
+    printf "  %s\n" "${to_backup[@]}"
+
+    if confirm "Create backups before replacing?" "y"; then
+      mkdir -p "$backup_dir"
+      for f in "${to_backup[@]}"; do
+        local dst="${backup_dir}/${f}"
+        mkdir -p "$(dirname "$dst")"
+        cp -p "${HOME}/${f}" "$dst"
+      done
+      print_success "Backups saved in ${backup_dir}"
+    fi
+  fi
+
+  if stow -R -v -d "${DOTFILES_DIR}" -t "${HOME}" home; then
+    print_success "Dotfiles stowed successfully"
+  else
+    print_error "Failed to stow dotfiles"
+    return 1
+  fi
+}
+
+# ─────────────────────────────────────────────
+# Step 4 — Python tools via uv
+# ─────────────────────────────────────────────
+install_python_tools() {
+  print_step "Installing Python tools via uv"
+
+  if ! command_exists uv; then
+    print_error "uv is not installed — should have been installed via Brewfile"
+    return 1
+  fi
+
+  print_info "Installing sqlit (SQL TUI)..."
+  if uv tool install sqlit-tui; then
+    print_success "sqlit installed successfully"
+  else
+    print_warning "Failed to install sqlit"
+  fi
+}
+
+# ─────────────────────────────────────────────
+# Step 5 — SSH key
+# ─────────────────────────────────────────────
+generate_ssh_key() {
+  print_step "Generating SSH key for GitHub"
+
+  local key_path="${HOME}/.ssh/id_ed25519"
+
+  if [[ -f "$key_path" ]]; then
+    print_success "SSH key already exists at $key_path"
+    return 0
+  fi
+
+  # Ask for email
+  local email=""
+  read -r -p "Enter your GitHub email: " email
+
+  if [[ -z "$email" ]]; then
+    print_error "Email is required"
+    return 1
+  fi
+
+  mkdir -p "${HOME}/.ssh"
+  chmod 700 "${HOME}/.ssh"
+
+  if ssh-keygen -t ed25519 -C "$email" -f "$key_path" -N ""; then
+    print_success "SSH key generated at $key_path"
+  else
+    print_error "Failed to generate SSH key"
+    return 1
+  fi
+
+  # Add to ssh-agent
+  if ! pgrep -u "$USER" ssh-agent >/dev/null 2>&1; then
+    eval "$(ssh-agent -s)" >/dev/null
+  fi
+  ssh-add "$key_path" 2>/dev/null && print_success "Key added to ssh-agent"
+
+  # Copy public key to clipboard (macOS)
+  if command_exists pbcopy; then
+    pbcopy <"${key_path}.pub"
+    print_success "Public key copied to clipboard"
+  fi
+
+  echo ""
+  print_info "Next steps:"
+  echo "  1. Go to github.com → Settings → SSH and GPG keys → New SSH key"
+  echo "  2. Paste the key (already in your clipboard)"
+  echo "  3. Choose 'Authentication Key'"
+  echo ""
+  print_info "Public key:"
+  cat "${key_path}.pub"
+}
+
+# ─────────────────────────────────────────────
+# Step 6 — Set zsh as default shell
+# ─────────────────────────────────────────────
+setup_zsh_shell() {
+  print_step "Setting up zsh as default shell"
+
+  if ! command_exists zsh; then
+    print_error "zsh is not installed"
+    return 1
+  fi
+
+  local zsh_path
+  zsh_path=$(command -v zsh)
+
+  # Add zsh to /etc/shells if not already there
+  if ! grep -q "$zsh_path" /etc/shells; then
+    print_info "Adding zsh to /etc/shells..."
+    echo "$zsh_path" | sudo tee -a /etc/shells >/dev/null
+    print_success "zsh added to /etc/shells"
+  fi
+
+  # Set as default shell
+  if [[ "$SHELL" != "$zsh_path" ]]; then
+    print_info "Setting zsh as default shell..."
+    if chsh -s "$zsh_path"; then
+      print_success "Default shell changed to zsh"
+      print_info "Log out and back in for the change to take effect"
+    else
+      print_error "Failed to change default shell"
+      return 1
+    fi
+  else
+    print_success "zsh is already the default shell"
+  fi
+
+  # Create zsh history directory
+  mkdir -p "${HOME}/.local/share/zsh"
+  print_success "zsh history directory created"
+}
+
+# ─────────────────────────────────────────────
+# Commands
+# ─────────────────────────────────────────────
+cmd_init() {
+  print_header "Initializing dotfiles — macOS M5"
+
+  install_homebrew || return 1
+  install_packages || return 1
+  stow_dotfiles || return 1
+  install_python_tools || print_warning "Python tools installation failed (continuing)"
+
+  if [[ "${SKIP_SSH:-}" != "true" ]]; then
+    generate_ssh_key || print_warning "SSH key generation failed (continuing)"
+  fi
+
+  setup_zsh_shell || print_warning "zsh setup failed (continuing)"
+
+  print_header "Done! 🎉"
+  echo ""
+  print_info "Restart your terminal to start using zsh."
+  print_info "Run './install doctor' to verify the installation."
+}
+
+cmd_update() {
+  print_header "Updating dotfiles"
+
+  print_info "Pulling latest changes..."
+  if git -C "$DOTFILES_DIR" pull; then
+    print_success "Repository updated"
+  else
+    print_error "Failed to pull latest changes"
+    return 1
+  fi
+
+  if confirm "Update Homebrew packages?" "y"; then
+    brew update && brew upgrade
+    print_success "Packages updated"
+  fi
+
+  if confirm "Re-stow dotfiles?" "y"; then
+    stow_dotfiles
+  fi
+}
+
+cmd_doctor() {
+  print_header "Running diagnostics"
+
+  local issues=0
+
+  # Core tools
+  local tools=("brew" "stow" "zsh" "git" "nvim" "tmux" "uv" "mise" "starship")
+  for tool in "${tools[@]}"; do
+    if command_exists "$tool"; then
+      print_success "$tool installed"
+    else
+      print_error "$tool not installed"
+      ((++issues))
+    fi
+  done
+
+  # Default shell
+  if [[ "$SHELL" == "$(command -v zsh)" ]]; then
+    print_success "zsh is the default shell"
+  else
+    print_warning "zsh is not the default shell (current: $SHELL)"
+  fi
+
+  # Symlinks
+  local broken=0
+  while IFS= read -r -d '' link; do
+    [[ ! -e "$link" ]] && ((++broken))
+  done < <(find "${HOME}" -maxdepth 3 -type l -print0 2>/dev/null)
+
+  if [[ $broken -eq 0 ]]; then
+    print_success "No broken symlinks"
+  else
+    print_warning "$broken broken symlink(s) found"
+  fi
+
+  # SSH key
+  if [[ -f "${HOME}/.ssh/id_ed25519" ]]; then
+    print_success "SSH key exists"
+  else
+    print_warning "No SSH key found — run './install gen-ssh-key'"
+  fi
+
+  # sqlit
+  if command_exists sqlit; then
+    print_success "sqlit installed"
+  else
+    print_warning "sqlit not installed — run 'uv tool install sqlit-tui'"
+  fi
+
+  echo ""
+  if [[ $issues -eq 0 ]]; then
+    print_success "All checks passed ✨"
+  else
+    print_error "$issues critical issue(s) found"
+  fi
+}
+
+cmd_stow() {
+  print_header "Stowing dotfiles"
+  stow_dotfiles
+}
+
+cmd_gen_ssh_key() {
+  print_header "Generating SSH key"
+  TOTAL_STEPS=1
+  CURRENT_STEP=0
+  generate_ssh_key
+}
+
+cmd_retry() {
+  print_header "Retrying failed packages"
+
+  local failed_file
+  failed_file=$(find "${PACKAGES_DIR}" -name "failed_*.txt" -type f 2>/dev/null | sort -r | head -1)
+
+  if [[ -z "$failed_file" ]]; then
+    print_info "No failed packages file found"
+    return 0
+  fi
+
+  print_info "Retrying packages from: $failed_file"
+
+  local success=0
+  local total=0
+
+  while IFS= read -r entry; do
+    ((++total))
+    if [[ "$entry" =~ ^brew:(.+)$ ]]; then
+      brew install "${BASH_REMATCH[1]}" 2>/dev/null && ((++success))
+    elif [[ "$entry" =~ ^cask:(.+)$ ]]; then
+      brew install --cask "${BASH_REMATCH[1]}" 2>/dev/null && ((++success))
+    fi
+  done <"$failed_file"
+
+  print_info "Result: $success/$total packages installed"
+  [[ $success -eq $total ]] && rm "$failed_file" && print_success "All packages installed — cleaned up failed file"
+}
+
+cmd_help() {
+  echo -e "${BOLD}${SCRIPT_NAME}${RESET} v${VERSION} — Dotfiles manager"
+  echo ""
+  echo -e "${BOLD}USAGE:${RESET}"
+  echo "    ./install [COMMAND] [OPTIONS]"
+  echo ""
+  echo -e "${BOLD}COMMANDS:${RESET}"
+  echo "    init            Full setup (Homebrew, packages, stow, tools, SSH, zsh)"
+  echo "    update          Pull latest changes and update packages"
+  echo "    doctor          Check installation health"
+  echo "    stow            Re-create dotfile symlinks"
+  echo "    gen-ssh-key     Generate a new SSH key for GitHub"
+  echo "    retry           Retry failed package installations"
+  echo "    help            Show this help"
+  echo ""
+  echo -e "${BOLD}OPTIONS:${RESET}"
+  echo "    --skip-ssh      Skip SSH key generation during init"
+  echo "    --version       Show version"
+  echo ""
+  echo -e "${BOLD}EXAMPLES:${RESET}"
+  echo "    ./install init             # Full setup on a new Mac"
+  echo "    ./install init --skip-ssh  # Setup without SSH key"
+  echo "    ./install doctor           # Check everything is working"
+  echo "    ./install update           # Update packages and dotfiles"
+  echo "    ./install retry            # Retry failed packages"
+}
+
+# ─────────────────────────────────────────────
+# Main
+# ─────────────────────────────────────────────
+main() {
+  while [[ $# -gt 0 ]]; do
+    case "$1" in
+    --skip-ssh)
+      export SKIP_SSH=true
+      shift
+      ;;
+    --version)
+      echo "${SCRIPT_NAME} v${VERSION}"
+      exit 0
+      ;;
+    -h | --help)
+      cmd_help
+      exit 0
+      ;;
+    *) break ;;
+    esac
+  done
+
+  local cmd="${1:-help}"
+  shift || true
+
+  case "$cmd" in
+  init) cmd_init "$@" ;;
+  update) cmd_update "$@" ;;
+  doctor) cmd_doctor "$@" ;;
+  stow) cmd_stow "$@" ;;
+  gen-ssh-key) cmd_gen_ssh_key "$@" ;;
+  retry) cmd_retry "$@" ;;
+  help) cmd_help ;;
+  *)
+    print_error "Unknown command: $cmd"
+    echo "Run './install help' for usage"
+    exit 1
+    ;;
+  esac
+}
+
+main "$@"
