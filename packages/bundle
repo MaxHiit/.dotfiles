@@ -40,7 +40,7 @@ brew "fastfetch"                        # system info
 
 # Apps (GUI)
 cask "ghostty"                          # terminal
-cask "1password"                        # password manager
+cask "proton-pass"                      # password manager
 cask "raycast"                          # spotlight replacement
 cask "figma"                            # design tool
 cask "discord"                          # messaging
