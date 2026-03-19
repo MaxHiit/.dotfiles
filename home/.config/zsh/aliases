@@ -37,6 +37,9 @@ alias t='tmux attach || tmux new -s Work'
 # Open neovim on current dir if no argument given
 n() { if [ "$#" -eq 0 ]; then command nvim . ; else command nvim "$@"; fi; }
 
+# Dotfiles
+alias dotfiles='$EDITOR ~/.dotfiles'
+
 # Git
 alias g='git'
 alias gcm='git commit -m'
