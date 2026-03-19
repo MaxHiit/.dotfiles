@@ -1,10 +1,13 @@
 [settings]
-idiomatic_version_file_enable_tools = ["ruby"]
-
-[settings.ruby]
+# Enable idiomatic version files (.node-version, .bun-version, .python-version)
+idiomatic_version_file_enable_tools = ["node", "bun", "python"]
 
 [tools]
-bun = "latest"
-go = "latest"
+# Node LTS — required by many tools even when using Bun as primary runtime
 node = "lts"
+
+# Bun — primary JS runtime and package manager (faster than npm/pnpm)
+bun = "latest"
+
+# Python — version managed by mise, packages/envs managed by uv
 python = "latest"
