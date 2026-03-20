@@ -1,0 +1,21 @@
+#!/bin/bash
+
+# Read theme name from ghostty config and format it
+# "gruber-darker" → "Gruber Darker"
+GHOSTTY_CONFIG="$HOME/.config/ghostty/config"
+
+if [[ -f "$GHOSTTY_CONFIG" ]]; then
+  theme=$(grep 'config-file' "$GHOSTTY_CONFIG" \
+    | sed 's/.*themes\///' \
+    | sed 's/\"//g' \
+    | tr -d ' ' \
+    | sed -E 's/(^|-)([a-z])/\1\u\2/g; s/-/ /g')
+else
+  theme="Unknown"
+fi
+
+# ANSI color circles — same approach as Omarchy
+colors="\e[31m●\e[32m●\e[33m●\e[34m●\e[35m●\e[36m●\e[37m●\e[0m"
+
+# Output theme name + colors on the same line
+echo -e "$theme $colors"
