@@ -17,6 +17,10 @@ brew "fd"                               # better find
 brew "delta"                            # better git diff
 brew "tree"                             # directory tree viewer
 
+# Zsh plugins
+brew "zsh-autosuggestions"              # autosuggestions
+brew "zsh-syntax-highlighting"          # syntax highlighting
+
 # Editors
 brew "neovim"
 
