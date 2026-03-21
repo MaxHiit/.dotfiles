@@ -91,6 +91,13 @@ return {
 
 				-- Inlay hints — subtle, doesn't compete with code
 				LspInlayHint = { fg = "#52494e", bg = "NONE" },
+
+        -- Remove sign column background
+        SignColumn         = { bg = "NONE" },
+        SignColumnSB       = { bg = "NONE" },
+        GitSignsAdd        = { bg = "NONE" },
+        GitSignsChange     = { bg = "NONE" },
+        GitSignsDelete     = { bg = "NONE" },
 			},
 		},
 		config = function(_, opts)
