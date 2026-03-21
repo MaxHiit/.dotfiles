@@ -98,6 +98,10 @@ return {
         GitSignsAdd        = { bg = "NONE" },
         GitSignsChange     = { bg = "NONE" },
         GitSignsDelete     = { bg = "NONE" },
+
+        -- Float windows match editor background
+        NormalFloat  = { bg = "#181818" },
+        FloatBorder  = { bg = "#181818", fg = "#484848" },
 			},
 		},
 		config = function(_, opts)
