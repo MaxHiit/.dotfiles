@@ -18,21 +18,24 @@ return {
         return mapping.desc and mapping.desc ~= ""
       end,
 
-      spec = {
-        { mode = { "n", "x" },
+      spec   = {
+        {
+          mode = { "n", "x" },
 
           -- Leader groups
-          { "<leader>f", group = "file" },
-          { "<leader>s", group = "splits" },
-          { "<leader>l", group = "lsp" },
-          { "<leader>g", group = "git" },
+          { "<leader>f",  group = "file" },
+          { "<leader>s",  group = "splits" },
+          { "<leader>l",  group = "lsp" },
+          { "<leader>g",  group = "git" },
           { "<leader>gh", group = "hunks" },
-          { "<leader>r", group = "reload / rename" },
-          { "<leader>t", group = "telescope" },
-          { "<leader>e", group = "explorer" },
-          { "<leader>h", group = "harpoon" },
-          { "<leader>u", group = "utils" },
-          { "<leader>m", group = "markdown" },
+          { "<leader>r",  group = "reload / rename" },
+          { "<leader>t",  group = "telescope" },
+          { "<leader>e",  group = "explorer" },
+          { "<leader>h",  group = "harpoon" },
+          { "<leader>u",  group = "utils" },
+          { "<leader>m",  group = "markdown" },
+          { "gs",         group = "surround" },
+          { "gc",         group = "comment" },
 
           -- Buffer group with dynamic expansion
           {
@@ -58,10 +61,10 @@ return {
           { "[", group = "prev" },
 
           -- Go to group — gd, gr, gi, gD etc.
-          { "g",  group = "goto" },
+          { "g", group = "goto" },
 
           -- Fold group — za, zc, zo etc.
-          { "z",  group = "fold" },
+          { "z", group = "fold" },
         },
       },
     },
