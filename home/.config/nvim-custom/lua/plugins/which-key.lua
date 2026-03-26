@@ -29,7 +29,6 @@ return {
           { "<leader>sg", group = "git" },
           { "<leader>gh", group = "hunks" },
           { "<leader>r",  group = "reload / rename" },
-          { "<leader>t",  group = "telescope" },
           { "<leader>e",  group = "explorer" },
           { "<leader>h",  group = "harpoon" },
           { "<leader>u",  group = "utils" },
