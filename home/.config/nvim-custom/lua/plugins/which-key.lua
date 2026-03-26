@@ -9,11 +9,10 @@ return {
   {
     "folke/which-key.nvim",
     event = "VeryLazy",
-    opts = {
+    opts  = {
       preset = "helix",
       delay  = 300,
 
-      -- Filter out mappings without description or with specific descriptions
       filter = function(mapping)
         return mapping.desc and mapping.desc ~= ""
       end,
@@ -22,22 +21,36 @@ return {
         {
           mode = { "n", "x" },
 
-          -- Leader groups
+          -- File actions (fichier courant)
           { "<leader>f",  group = "file" },
+
+          -- Search / Telescope
           { "<leader>s",  group = "search" },
-          { "<leader>l",  group = "lsp" },
           { "<leader>sg", group = "git" },
+
+          -- LSP
+          { "<leader>l",  group = "lsp" },
+
+          -- Git
+          { "<leader>g",  group = "git" },
           { "<leader>gh", group = "hunks" },
+
+          -- Reload / Rename
           { "<leader>r",  group = "reload / rename" },
+
+          -- Explorer
           { "<leader>e",  group = "explorer" },
+
+          -- Harpoon
           { "<leader>h",  group = "harpoon" },
+
+          -- Utils
           { "<leader>u",  group = "utils" },
-          { "<leader>m",  group = "markdown" },
 
           -- Buffer group with dynamic expansion
           {
             "<leader>b",
-            group = "buffers",
+            group  = "buffers",
             expand = function()
               return require("which-key.extras").expand.buf()
             end,
@@ -53,24 +66,25 @@ return {
             end,
           },
 
-          -- Navigation groups — makes ]d [d ]e [e etc. readable
+          -- Navigation groups
           { "]",  group = "next" },
           { "[",  group = "prev" },
 
-          -- Go to group — gd, gr, gi, gD etc.
+          -- Go to
           { "g",  group = "goto" },
+          { "gr", group = "lsp" },
 
-          -- Fold group — za, zc, zo etc.
+          -- Fold
           { "z",  group = "fold" },
 
+          -- Surround and comment
           { "gs", group = "surround" },
           { "gc", group = "comment" },
         },
       },
     },
 
-    keys = {
-      -- Show buffer-local keymaps
+    keys  = {
       {
         "<leader>?",
         function()
@@ -78,7 +92,6 @@ return {
         end,
         desc = "Buffer keymaps (which-key)",
       },
-      -- Window hydra mode — stay in window mode until Esc
       {
         "<C-w><space>",
         function()

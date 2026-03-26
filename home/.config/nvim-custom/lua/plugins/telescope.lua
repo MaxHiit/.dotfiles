@@ -10,7 +10,7 @@ return {
   {
     "nvim-telescope/telescope.nvim",
     branch       = "master",
-    cmd          = "Telescope",
+    -- cmd          = "Telescope",
     dependencies = {
       "nvim-lua/plenary.nvim",
       "nvim-tree/nvim-web-devicons",
@@ -39,7 +39,7 @@ return {
       telescope.setup({
         defaults = {
           prompt_prefix        = " ",
-          selection_caret      = " ",
+          selection_caret      = "  ",
           path_display         = { "filename_first" },
 
           file_ignore_patterns = {
