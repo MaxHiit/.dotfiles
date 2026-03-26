@@ -26,6 +26,7 @@ return {
           { "<leader>s", group = "splits" },
           { "<leader>l", group = "lsp" },
           { "<leader>g", group = "git" },
+          { "<leader>gh", group = "hunks" },
           { "<leader>r", group = "reload / rename" },
           { "<leader>t", group = "telescope" },
           { "<leader>e", group = "explorer" },
