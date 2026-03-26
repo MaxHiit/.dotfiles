@@ -45,10 +45,10 @@ return {
       {
         "WhoIsSethDaniel/mason-tool-installer.nvim",
         opts = {
-          auto_update    = true,
-          run_on_start   = true,
-          start_delay    = 3000,
-          debounce_hours = 12,
+          auto_update      = true,
+          run_on_start     = true,
+          start_delay      = 3000,
+          debounce_hours   = 12,
           ensure_installed = {
             -- LSP servers
             "lua-language-server",
@@ -69,7 +69,7 @@ return {
       },
       "saghen/blink.cmp",
     },
-    config = function()
+    config       = function()
       -- Capabilities — merge neovim defaults with blink.cmp
       local capabilities = vim.lsp.protocol.make_client_capabilities()
       local ok, blink = pcall(require, "blink.cmp")
@@ -87,9 +87,9 @@ return {
       -- Diagnostics --
       -- virtual_text = false — handled by tiny-inline-diagnostic
       vim.diagnostic.config({
-        underline    = true,
-        virtual_text = false,
-        signs        = {
+        underline        = true,
+        virtual_text     = false,
+        signs            = {
           text = {
             [vim.diagnostic.severity.ERROR] = " ",
             [vim.diagnostic.severity.WARN]  = " ",
@@ -97,7 +97,7 @@ return {
             [vim.diagnostic.severity.INFO]  = " ",
           },
         },
-        float = {
+        float            = {
           border    = "rounded",
           source    = true,
           focusable = false,
@@ -115,8 +115,8 @@ return {
 
           -- Detach from non-file buffers
           if bufname == ""
-            or bufname:match("^diffview://")
-            or bufname:match("^fugitive://")
+              or bufname:match("^diffview://")
+              or bufname:match("^fugitive://")
           then
             vim.schedule(function()
               vim.lsp.buf_detach_client(bufnr, event.data.client_id)
@@ -125,8 +125,7 @@ return {
           end
 
           -- Attach buffer-local LSP keymaps
-          local keymaps = require("config.keymaps")
-          keymaps.map_lsp_keybinds(bufnr)
+          require("config.keymaps").map_lsp_keybinds(bufnr)
         end,
       })
 
