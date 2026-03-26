@@ -24,9 +24,9 @@ return {
 
           -- Leader groups
           { "<leader>f",  group = "file" },
-          { "<leader>s",  group = "splits" },
+          { "<leader>s",  group = "search" },
           { "<leader>l",  group = "lsp" },
-          { "<leader>g",  group = "git" },
+          { "<leader>sg", group = "git" },
           { "<leader>gh", group = "hunks" },
           { "<leader>r",  group = "reload / rename" },
           { "<leader>t",  group = "telescope" },
@@ -34,8 +34,6 @@ return {
           { "<leader>h",  group = "harpoon" },
           { "<leader>u",  group = "utils" },
           { "<leader>m",  group = "markdown" },
-          { "gs",         group = "surround" },
-          { "gc",         group = "comment" },
 
           -- Buffer group with dynamic expansion
           {
@@ -57,14 +55,17 @@ return {
           },
 
           -- Navigation groups — makes ]d [d ]e [e etc. readable
-          { "]", group = "next" },
-          { "[", group = "prev" },
+          { "]",  group = "next" },
+          { "[",  group = "prev" },
 
           -- Go to group — gd, gr, gi, gD etc.
-          { "g", group = "goto" },
+          { "g",  group = "goto" },
 
           -- Fold group — za, zc, zo etc.
-          { "z", group = "fold" },
+          { "z",  group = "fold" },
+
+          { "gs", group = "surround" },
+          { "gc", group = "comment" },
         },
       },
     },
