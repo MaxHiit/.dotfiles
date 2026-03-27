@@ -7,27 +7,35 @@
 -- ================================================================================================
 
 return {
-  {
-    "MagicDuck/grug-far.nvim",
-    cmd  = { "GrugFar", "GrugFarWithin" },
-    opts = { headerMaxWidth = 80 },
-    keys = {
-      {
-        "<leader>S",
-        function()
-          local grug = require("grug-far")
-          -- Pre-filter by current file extension when in a real file
-          local ext = vim.bo.buftype == "" and vim.fn.expand("%:e")
-          grug.open({
-            transient = true,
-            prefills  = {
-              filesFilter = ext and ext ~= "" and "*." .. ext or nil,
-            },
-          })
-        end,
-        mode = { "n", "x" },
-        desc = "Search: find and replace",
-      },
-    },
-  },
+	{
+		"MagicDuck/grug-far.nvim",
+		cmd = { "GrugFar", "GrugFarWithin" },
+		opts = {
+			headerMaxWidth = 80,
+			engines = {
+				ripgrep = {
+					-- Search hidden files/dirs (dotfiles) by default
+					extraArgs = "--hidden",
+				},
+			},
+		},
+		keys = {
+			{
+				"<leader>S",
+				function()
+					local grug = require("grug-far")
+					local ext = vim.bo.buftype == "" and vim.fn.expand("%:e")
+					grug.open({
+						transient = true,
+						prefills = {
+							paths = vim.fn.getcwd(),
+							filesFilter = ext and ext ~= "" and ("*." .. ext) or nil,
+						},
+					})
+				end,
+				mode = { "n", "x" },
+				desc = "Search: find and replace",
+			},
+		},
+	},
 }
