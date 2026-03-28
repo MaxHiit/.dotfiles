@@ -42,6 +42,7 @@ vim.opt.sidescrolloff = 8 -- Keep 8 columns visible left/right of cursor
 vim.opt.colorcolumn = "80" -- Show a vertical guide at column 80
 vim.opt.pumheight = 10 -- Max height for completion popup menu
 vim.opt.winborder = "rounded" -- Rounded borders on all floating windows (nvim 0.11+)
+vim.opt.winbar = ""
 
 -- Cursor shape --
 -- Different cursor shapes per mode — visual feedback for current mode
