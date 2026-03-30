@@ -24,16 +24,16 @@ map("n", "<leader>fq", "<Cmd>q<CR>", { desc = "Quit" })
 map("n", "<leader>fQ", "<Cmd>qa!<CR>", { desc = "Quit all without saving" })
 map("n", "<leader>fr", "<Cmd>checktime<CR>", { desc = "Reload file" })
 map("n", "<leader>fp", function()
-  local path = vim.fn.expand("%:~")
-  vim.fn.setreg("+", path)
-  vim.notify("Copied: " .. path)
+	local path = vim.fn.expand("%:~")
+	vim.fn.setreg("+", path)
+	vim.notify("Copied: " .. path)
 end, { desc = "Copy file path to clipboard" })
 
 -- Config --
 map("n", "<leader>rc", "<Cmd>e ~/.config/nvim-custom/init.lua<CR>", { desc = "Edit neovim config" })
 map("n", "<leader>rr", function()
-  vim.cmd.source(vim.fn.stdpath("config") .. "/init.lua")
-  vim.notify("Config reloaded!", vim.log.levels.INFO)
+	vim.cmd.source(vim.fn.stdpath("config") .. "/init.lua")
+	vim.notify("Config reloaded!", vim.log.levels.INFO)
 end, { desc = "Reload neovim config" })
 
 -- Navigation centered --
@@ -62,35 +62,35 @@ map("v", "L", "$<left>", { desc = "End of line (visual)" })
 -- Windows --
 -- Navigate between splits — falls back to wincmd if tmux plugin not loaded
 map("n", "<C-h>", function()
-  if vim.fn.exists(":NvimTmuxNavigateLeft") ~= 0 then
-    vim.cmd.NvimTmuxNavigateLeft()
-  else
-    vim.cmd.wincmd("h")
-  end
+	if vim.fn.exists(":NvimTmuxNavigateLeft") ~= 0 then
+		vim.cmd.NvimTmuxNavigateLeft()
+	else
+		vim.cmd.wincmd("h")
+	end
 end, { desc = "Navigate left (tmux-aware)" })
 
 map("n", "<C-j>", function()
-  if vim.fn.exists(":NvimTmuxNavigateDown") ~= 0 then
-    vim.cmd.NvimTmuxNavigateDown()
-  else
-    vim.cmd.wincmd("j")
-  end
+	if vim.fn.exists(":NvimTmuxNavigateDown") ~= 0 then
+		vim.cmd.NvimTmuxNavigateDown()
+	else
+		vim.cmd.wincmd("j")
+	end
 end, { desc = "Navigate down (tmux-aware)" })
 
 map("n", "<C-k>", function()
-  if vim.fn.exists(":NvimTmuxNavigateUp") ~= 0 then
-    vim.cmd.NvimTmuxNavigateUp()
-  else
-    vim.cmd.wincmd("k")
-  end
+	if vim.fn.exists(":NvimTmuxNavigateUp") ~= 0 then
+		vim.cmd.NvimTmuxNavigateUp()
+	else
+		vim.cmd.wincmd("k")
+	end
 end, { desc = "Navigate up (tmux-aware)" })
 
 map("n", "<C-l>", function()
-  if vim.fn.exists(":NvimTmuxNavigateRight") ~= 0 then
-    vim.cmd.NvimTmuxNavigateRight()
-  else
-    vim.cmd.wincmd("l")
-  end
+	if vim.fn.exists(":NvimTmuxNavigateRight") ~= 0 then
+		vim.cmd.NvimTmuxNavigateRight()
+	else
+		vim.cmd.wincmd("l")
+	end
 end, { desc = "Navigate right (tmux-aware)" })
 
 -- Splits --
@@ -117,9 +117,9 @@ map("n", "<leader>nh", "<Cmd>noh<CR>", { desc = "Clear search highlight" })
 -- Quick find/replace word under cursor
 -- S replaces native substitute line — more useful for daily workflow
 map("n", "S", function()
-  local cmd = ":%s/<C-r><C-w>/<C-r><C-w>/gI<Left><Left><Left>"
-  local keys = vim.api.nvim_replace_termcodes(cmd, true, false, true)
-  vim.api.nvim_feedkeys(keys, "n", false)
+	local cmd = ":%s/<C-r><C-w>/<C-r><C-w>/gI<Left><Left><Left>"
+	local keys = vim.api.nvim_replace_termcodes(cmd, true, false, true)
+	vim.api.nvim_feedkeys(keys, "n", false)
 end, { desc = "Find/replace word under cursor" })
 
 -- Editing --
@@ -145,82 +145,3 @@ map("v", "p", '"_dp', { desc = "Paste without overwriting register" })
 
 -- x to black hole — won't replace clipboard content
 map("n", "x", '"_x', { desc = "Delete char without yanking" })
-
--- LSP keymaps --
--- Called from lsp on_attach — keymaps are buffer-local
-local M = {}
-
-M.map_lsp_keybinds = function(buffer_number)
-  local opts = function(desc)
-    return { buffer = buffer_number, desc = desc }
-  end
-
-  -- Go to --
-  map("n", "gd", vim.lsp.buf.definition, opts("LSP: Go to definition"))
-  map("n", "gD", vim.lsp.buf.declaration, opts("LSP: Go to declaration"))
-  map("n", "gi", vim.lsp.buf.implementation, opts("LSP: Go to implementation"))
-  map("n", "gr", vim.lsp.buf.references, opts("LSP: Go to references"))
-  map("n", "td", vim.lsp.buf.type_definition, opts("LSP: Go to type definition"))
-
-  -- Hover / Signature --
-  -- nvim 0.11+ accepts options directly in hover() and signature_help()
-  map("n", "K", function()
-    vim.lsp.buf.hover({ border = "rounded" })
-  end, opts("LSP: Hover documentation"))
-
-  map("i", "<C-k>", function()
-    vim.lsp.buf.signature_help({ border = "rounded" })
-  end, opts("LSP: Signature help"))
-
-  -- Code --
-  map({ "n", "v" }, "<leader>la", vim.lsp.buf.code_action, opts("LSP: Code action"))
-  map("n", "<leader>lr", vim.lsp.buf.rename, opts("LSP: Rename symbol"))
-  map("n", "<leader>lf", function()
-    require("conform").format({ async = true, lsp_format = "fallback" })
-  end, opts("LSP: Format buffer"))
-
-  -- Toggle inlay hints (nvim 0.11+)
-  map("n", "<leader>li", function()
-    vim.lsp.inlay_hint.enable(not vim.lsp.inlay_hint.is_enabled({}))
-  end, opts("LSP: Toggle inlay hints"))
-
-  -- Diagnostics --
-  -- nvim 0.11+ vim.diagnostic.jump() replaces goto_next/prev
-  map("n", "]d", function()
-    vim.diagnostic.jump({ count = 1, float = false })
-    vim.api.nvim_feedkeys("zz", "n", false)
-  end, opts("LSP: Next diagnostic (centered)"))
-
-  map("n", "[d", function()
-    vim.diagnostic.jump({ count = -1, float = false })
-    vim.api.nvim_feedkeys("zz", "n", false)
-  end, opts("LSP: Previous diagnostic (centered)"))
-
-  map("n", "]e", function()
-    vim.diagnostic.jump({ count = 1, severity = vim.diagnostic.severity.ERROR, float = false })
-    vim.api.nvim_feedkeys("zz", "n", false)
-  end, opts("LSP: Next error (centered)"))
-
-  map("n", "[e", function()
-    vim.diagnostic.jump({ count = -1, severity = vim.diagnostic.severity.ERROR, float = false })
-    vim.api.nvim_feedkeys("zz", "n", false)
-  end, opts("LSP: Previous error (centered)"))
-
-  map("n", "]w", function()
-    vim.diagnostic.jump({ count = 1, severity = vim.diagnostic.severity.WARN, float = false })
-    vim.api.nvim_feedkeys("zz", "n", false)
-  end, opts("LSP: Next warning (centered)"))
-
-  map("n", "[w", function()
-    vim.diagnostic.jump({ count = -1, severity = vim.diagnostic.severity.WARN, float = false })
-    vim.api.nvim_feedkeys("zz", "n", false)
-  end, opts("LSP: Previous warning (centered)"))
-
-  map("n", "<leader>ld", function()
-    vim.diagnostic.open_float({ border = "rounded" })
-  end, opts("LSP: Open diagnostic float"))
-
-  map("n", "<leader>lq", vim.diagnostic.setqflist, opts("LSP: Diagnostics to quickfix"))
-end
-
-return M
