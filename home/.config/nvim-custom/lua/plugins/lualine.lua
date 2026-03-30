@@ -5,6 +5,8 @@
 --   > github : https://github.com/nvim-lualine/lualine.nvim
 -- ================================================================================================
 
+local icons = require("icons")
+
 return {
 	{
 		"nvim-lualine/lualine.nvim",
@@ -61,10 +63,10 @@ return {
 				sources = { "nvim_diagnostic" },
 				sections = { "error", "warn", "info", "hint" },
 				symbols = {
-					error = " ",
-					warn = " ",
-					info = " ",
-					hint = " ",
+					error = icons.diagnostics.ERROR .. " ",
+					warn = icons.diagnostics.WARN .. " ",
+					info = icons.diagnostics.INFO .. " ",
+					hint = icons.diagnostics.HINT .. " ",
 				},
 				colored = true,
 				update_in_insert = false,
@@ -77,7 +79,7 @@ return {
 				"diff",
 				colored = true,
 				symbols = {
-					added = " ",
+					added = icons.misc.git .. " ",
 					modified = " ",
 					removed = " ",
 				},

@@ -5,12 +5,25 @@
 --   > github : https://github.com/folke/todo-comments.nvim
 -- ================================================================================================
 
+local icons = require("config.icons")
+
 return {
 	{
 		"folke/todo-comments.nvim",
 		cmd = { "TodoTrouble", "TodoTelescope" },
 		event = { "BufReadPost", "BufNewFile" },
-		opts = {},
+		opts = {
+			signs = true,
+			sign_priority = 8,
+			keywords = {
+				FIX = { icon = icons.misc.bug, color = "error", alt = { "FIXME", "BUG", "FIXIT", "ISSUE" } },
+				TODO = { icon = icons.misc.toolbox, color = "info" },
+				HACK = { icon = icons.misc.robot, color = "warning" },
+				WARN = { icon = icons.diagnostics.WARN, color = "warning", alt = { "WARNING", "XXX" } },
+				NOTE = { icon = icons.misc.palette, color = "hint", alt = { "INFO" } },
+				TEST = { icon = icons.misc.search, color = "test", alt = { "TESTING", "PASSED", "FAILED" } },
+			},
+		},
 		keys = {
 			{
 				"]t",
