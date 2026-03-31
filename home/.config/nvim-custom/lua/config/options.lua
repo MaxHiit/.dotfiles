@@ -3,6 +3,8 @@
 -- ABOUT : Core editor settings — behavior, UI, indentation, search, folding
 -- ================================================================================================
 
+local arrows = require("icons").arrows
+
 -- Leader --
 -- Must be set before lazy.nvim loads to ensure correct keymaps
 vim.g.mapleader = " "
@@ -95,15 +97,17 @@ vim.opt.mousescroll = "ver:3,hor:0" -- Vertical scroll only — no horizontal
 vim.opt.foldmethod = "expr"
 vim.opt.foldexpr = "v:lua.vim.treesitter.foldexpr()"
 vim.opt.foldlevel = 99
+vim.opt.foldcolumn = "1"
 vim.opt.foldlevelstart = 99
-vim.opt.foldcolumn = "0"
 
 vim.opt.fillchars = {
-	fold = " ",
-	foldopen = "",
-	foldclose = "",
-	foldsep = " ",
 	eob = " ",
+	fold = " ",
+	foldopen = arrows.down,
+	foldclose = arrows.right,
+	foldsep = " ",
+	foldinner = " ",
+	msgsep = "─",
 }
 
 _G.MyFoldText = function()
