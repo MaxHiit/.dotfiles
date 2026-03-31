@@ -5,7 +5,7 @@
 --         Server configs live in nvim/lsp/*.lua and are auto-loaded
 -- ================================================================================================
 
-local diagnostic_icons = require("icons").diagnostics
+local diagnostic_icons = require("config.icons").diagnostics
 
 -- On attach
 

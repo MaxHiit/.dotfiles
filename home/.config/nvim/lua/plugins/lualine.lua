@@ -5,7 +5,7 @@
 --   > github : https://github.com/nvim-lualine/lualine.nvim
 -- ================================================================================================
 
-local icons = require("icons")
+local icons = require("config.icons")
 
 return {
 	{
