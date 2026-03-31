@@ -3,7 +3,7 @@
 -- ABOUT : Core editor settings — behavior, UI, indentation, search, folding
 -- ================================================================================================
 
-local arrows = require("icons").arrows
+local arrows = require("config.icons").arrows
 
 -- Leader --
 -- Must be set before lazy.nvim loads to ensure correct keymaps
