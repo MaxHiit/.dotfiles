@@ -30,7 +30,7 @@ map("n", "<leader>fp", function()
 end, { desc = "Copy file path to clipboard" })
 
 -- Config --
-map("n", "<leader>rc", "<Cmd>e ~/.config/nvim-custom/init.lua<CR>", { desc = "Edit neovim config" })
+map("n", "<leader>rc", "<Cmd>e ~/.config/nvim/init.lua<CR>", { desc = "Edit neovim config" })
 map("n", "<leader>rr", function()
 	vim.cmd.source(vim.fn.stdpath("config") .. "/init.lua")
 	vim.notify("Config reloaded!", vim.log.levels.INFO)
