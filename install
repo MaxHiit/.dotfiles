@@ -1,10 +1,11 @@
 #!/usr/bin/env bash
+
 # =============================================================================
 # TITLE   : install
 # ABOUT   : Dotfiles management — macOS (primary) + Arch Linux
 # USAGE   : ./install [OPTIONS] COMMAND [ARGS]
 #           Run ./install help for the full list of commands
-# VERSION : 2.1.0
+# VERSION : 2.4.0
 # =============================================================================
 
 set -euo pipefail
@@ -14,7 +15,7 @@ set -euo pipefail
 # ─────────────────────────────────────────────
 
 readonly SCRIPT_NAME="install"
-readonly VERSION="2.1.0"
+readonly VERSION="2.4.0"
 DOTFILES_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 readonly DOTFILES_DIR
 readonly PACKAGES_DIR="${DOTFILES_DIR}/packages"
@@ -37,7 +38,7 @@ readonly BOLD='\033[1m'
 # ─────────────────────────────────────────────
 
 CURRENT_STEP=0
-TOTAL_STEPS=7
+TOTAL_STEPS=6
 
 # ─────────────────────────────────────────────
 # Logging
@@ -86,342 +87,45 @@ detect_os() {
 
 OS=$(detect_os)
 
-# ─────────────────────────────────────────────
-# LSP server definitions
-# Keys match nvim/lsp/*.lua filenames
-# ─────────────────────────────────────────────
-
-declare -A LSP_DESC=(
-  [lua_ls]="Lua Language Server"
-  [ts_ls]="TypeScript / JavaScript Language Server"
-  [pyright]="Python Type Checker and Language Server"
-  [cssls]="CSS / SCSS / Less Language Server"
-  [html]="HTML Language Server"
-  [tailwindcss]="Tailwind CSS Language Server"
-  [bashls]="Bash Language Server"
-  [oxlint]="JavaScript/TypeScript Linter"
-)
-
-LSP_KEYS=(lua_ls ts_ls pyright cssls html tailwindcss bashls oxlint)
-
-# ─────────────────────────────────────────────
-# Formatter definitions
-# ─────────────────────────────────────────────
-
-declare -A FMT_DESC=(
-  [prettierd]="Prettier Daemon — Markdown, HTML, CSS, YAML"
-  [stylua]="Lua Formatter"
-  [shfmt]="Shell Script Formatter"
-  [ruff]="Python Formatter and Linter"
-)
-
-FMT_KEYS=(prettierd stylua shfmt ruff)
-
-# ─────────────────────────────────────────────
-# Package manager requirements
-# ─────────────────────────────────────────────
-
-_require_brew() {
-  command_exists brew ||
-    {
-      print_error "Homebrew not found. Install it from https://brew.sh"
-      return 1
-    }
-}
-
-_require_pip() {
-  command_exists pip3 || command_exists pip ||
-    {
-      print_error "pip not found. Install Python first:
-  Mac  : brew install python
-  Arch : sudo pacman -S python-pip"
-      return 1
-    }
-  PIP=$(command -v pip3 2>/dev/null || command -v pip)
-}
-
-# Prefer bun over npm for JS package installation
-_require_node_pkg_manager() {
-  if command_exists bun; then
-    NODE_PKG="bun"
-  elif command_exists npm; then
-    NODE_PKG="npm"
-  else
-    print_error "Neither bun nor npm found. Install bun first:
-  Mac  : brew install bun
-  Arch : curl -fsSL https://bun.sh/install | bash"
-    return 1
-  fi
-}
-
-# ─────────────────────────────────────────────
-# Version helpers
-# ─────────────────────────────────────────────
-
-_npm_latest() { npm view "$1" version 2>/dev/null || echo "unknown"; }
-_brew_latest() { brew info "$1" 2>/dev/null | head -1 | awk '{print $3}' || echo "unknown"; }
-_brew_installed() { brew list --versions "$1" 2>/dev/null | awk '{print $2}' || echo ""; }
-
-# ─────────────────────────────────────────────
-# Low-level installers
-# ─────────────────────────────────────────────
-
-_brew_install() {
-  local pkg="$1"
-  local installed latest
-  installed=$(_brew_installed "$pkg")
-  latest=$(_brew_latest "$pkg")
-
-  if [[ -z "$installed" ]]; then
-    print_info "Installing $pkg@$latest via brew..."
-    brew install "$pkg" || {
-      print_warning "Failed to install $pkg"
-      return 1
-    }
-    print_success "$pkg@$latest installed"
-  elif [[ "$installed" != "$latest" ]]; then
-    print_warning "$pkg is installed ($installed) but $latest is available"
-    if confirm "  Update $pkg to $latest?" "y"; then
-      brew upgrade "$pkg" || {
-        print_warning "Failed to update $pkg"
-        return 1
-      }
-      print_success "$pkg updated to $latest"
-    else
-      print_info "Skipping $pkg update"
-    fi
-  else
-    print_success "$pkg@$installed already up to date"
-  fi
-}
-
-_pacman_install() {
-  local pkg="$1"
-  if pacman -Q "$pkg" &>/dev/null; then
-    local installed latest
-    installed=$(pacman -Q "$pkg" | awk '{print $2}')
-    latest=$(pacman -Si "$pkg" 2>/dev/null | grep Version | awk '{print $3}')
-    if [[ "$installed" != "$latest" ]]; then
-      print_warning "$pkg is installed ($installed) but $latest is available"
-      if confirm "  Update $pkg to $latest?" "y"; then
-        sudo pacman -S --noconfirm "$pkg" || {
-          print_warning "Failed to update $pkg"
-          return 1
-        }
-        print_success "$pkg updated to $latest"
-      else
-        print_info "Skipping $pkg update"
-      fi
-    else
-      print_success "$pkg@$installed already up to date"
-    fi
-  else
-    print_info "Installing $pkg via pacman..."
-    sudo pacman -S --noconfirm "$pkg" || {
-      print_warning "Failed to install $pkg"
-      return 1
-    }
-    print_success "$pkg installed"
-  fi
-}
-
-# Install a JS package globally — uses bun if available, falls back to npm
-_node_install() {
-  local pkg="$1"
-  local bin="$2"
-  _require_node_pkg_manager
-
-  if ! command_exists "$bin"; then
-    print_info "Installing $pkg via $NODE_PKG..."
-    if [[ "$NODE_PKG" == "bun" ]]; then
-      bun install -g "$pkg" || {
-        print_warning "Failed to install $pkg"
-        return 1
-      }
-    else
-      npm install -g "$pkg" || {
-        print_warning "Failed to install $pkg"
-        return 1
-      }
-    fi
-    print_success "$pkg installed"
-  else
-    print_info "Updating $pkg via $NODE_PKG..."
-    if [[ "$NODE_PKG" == "bun" ]]; then
-      bun install -g "$pkg" || {
-        print_warning "Failed to update $pkg"
-        return 1
-      }
-    else
-      npm install -g "$pkg" || {
-        print_warning "Failed to update $pkg"
-        return 1
-      }
-    fi
-    print_success "$pkg updated"
-  fi
-}
-
-_pip_install() {
-  local pkg="$1"
-  _require_pip
-  local installed
-  installed=$("$PIP" show "$pkg" 2>/dev/null | grep Version | awk '{print $2}' || echo "")
-  if [[ -z "$installed" ]]; then
-    print_info "Installing $pkg via pip..."
-    "$PIP" install --user "$pkg" || {
-      print_warning "Failed to install $pkg"
-      return 1
-    }
-    print_success "$pkg installed"
-  else
-    "$PIP" install --user --upgrade "$pkg" || {
-      print_warning "Failed to update $pkg"
-      return 1
-    }
-    print_success "$pkg updated"
-  fi
-}
-
-# ─────────────────────────────────────────────
-# LSP install
-# ─────────────────────────────────────────────
-
-install_lsp() {
-  local name="$1"
-  case "$name" in
-  lua_ls)
-    case "$OS" in
-    macos)
-      _require_brew
-      _brew_install lua-language-server
-      ;;
-    arch) _pacman_install lua-language-server ;;
-    *) _node_install lua-language-server lua-language-server ;;
-    esac
-    ;;
-  ts_ls)
-    _node_install typescript-language-server typescript-language-server
-    _node_install typescript tsserver
-    ;;
-  pyright)
-    case "$OS" in
-    macos)
-      _require_brew
-      _brew_install pyright
-      ;;
-    arch) _pacman_install pyright ;;
-    *) _node_install pyright pyright ;;
-    esac
-    ;;
-  cssls | html)
-    _node_install vscode-langservers-extracted vscode-css-language-server
-    ;;
-  tailwindcss)
-    _node_install @tailwindcss/language-server tailwindcss-language-server
-    ;;
-  bashls)
-    case "$OS" in
-    macos)
-      _require_brew
-      _brew_install bash-language-server
-      ;;
-    arch) _pacman_install bash-language-server ;;
-    *) _node_install bash-language-server bash-language-server ;;
-    esac
-    ;;
-  oxlint)
-    _node_install oxlint oxlint
-    ;;
-  *)
-    print_warning "Unknown LSP server: $name"
-    return 1
-    ;;
-  esac
-}
-
-# ─────────────────────────────────────────────
-# Formatter install
-# ─────────────────────────────────────────────
-
-install_fmt() {
-  local name="$1"
-  case "$name" in
-  prettierd)
-    _node_install @fsouza/prettierd prettierd
-    ;;
-  stylua)
-    case "$OS" in
-    macos)
-      _require_brew
-      _brew_install stylua
-      ;;
-    arch) _pacman_install stylua ;;
-    *)
-      print_error "Install stylua manually: https://github.com/JohnnyMorganz/StyLua"
-      return 1
-      ;;
-    esac
-    ;;
-  shfmt)
-    case "$OS" in
-    macos)
-      _require_brew
-      _brew_install shfmt
-      ;;
-    arch) _pacman_install shfmt ;;
-    *)
-      print_error "Install shfmt manually: https://github.com/mvdan/sh"
-      return 1
-      ;;
-    esac
-    ;;
-  ruff)
-    case "$OS" in
-    macos)
-      _require_brew
-      _brew_install ruff
-      ;;
-    arch) _pacman_install ruff ;;
-    *) _pip_install ruff ;;
-    esac
-    ;;
-  *)
-    print_warning "Unknown formatter: $name"
-    return 1
-    ;;
-  esac
-}
-
-# ─────────────────────────────────────────────
-# Install all LSP + formatters
-# ─────────────────────────────────────────────
-
-_install_all_lsp() {
-  print_info "Installing LSP servers..."
-  for name in "${LSP_KEYS[@]}"; do
-    print_info "→ $name (${LSP_DESC[$name]})"
-    install_lsp "$name" || print_warning "Failed: $name"
-  done
-}
-
-_install_all_fmt() {
-  print_info "Installing formatters..."
-  for name in "${FMT_KEYS[@]}"; do
-    print_info "→ $name (${FMT_DESC[$name]})"
-    install_fmt "$name" || print_warning "Failed: $name"
-  done
-}
-
 # =============================================================================
 # STEP FUNCTIONS
 # =============================================================================
 
 # ─────────────────────────────────────────────
-# Step 1 — Homebrew
+# Step 1 — Xcode CLI tools (macOS only)
+# ─────────────────────────────────────────────
+
+install_xcode_tools() {
+  [[ "$OS" != "macos" ]] && return 0
+
+  print_step "Checking Xcode CLI tools"
+
+  if xcode-select -p &>/dev/null; then
+    print_success "Xcode CLI tools already installed"
+    return 0
+  fi
+
+  print_info "Installing Xcode CLI tools..."
+  print_info "A dialog will appear — click Install and wait for completion"
+  xcode-select --install 2>/dev/null || true
+
+  until xcode-select -p &>/dev/null; do
+    sleep 5
+  done
+
+  print_success "Xcode CLI tools installed"
+}
+
+# ─────────────────────────────────────────────
+# Step 2 — Homebrew
 # ─────────────────────────────────────────────
 
 install_homebrew() {
+  [[ "$OS" != "macos" ]] && {
+    print_step "Skipping Homebrew (not macOS)"
+    return 0
+  }
+
   print_step "Installing Homebrew"
 
   if command_exists brew; then
@@ -455,10 +159,15 @@ install_homebrew() {
 }
 
 # ─────────────────────────────────────────────
-# Step 2 — Packages (Brewfile)
+# Step 3 — Packages (Brewfile)
 # ─────────────────────────────────────────────
 
 install_packages() {
+  [[ "$OS" != "macos" ]] && {
+    print_step "Skipping Brewfile (not macOS)"
+    return 0
+  }
+
   print_step "Installing packages from Brewfile"
 
   if [[ ! -f "${PACKAGES_DIR}/bundle" ]]; then
@@ -509,14 +218,16 @@ install_packages() {
 }
 
 # ─────────────────────────────────────────────
-# Step 3 — Stow dotfiles
+# Step 4 — Stow dotfiles
 # ─────────────────────────────────────────────
 
 stow_dotfiles() {
   print_step "Stowing dotfiles"
 
   if ! command_exists stow; then
-    print_error "GNU Stow is not installed — install it first: brew install stow"
+    print_error "GNU Stow is not installed — install it first:
+  Mac  : brew install stow
+  Arch : sudo pacman -S stow"
     return 1
   fi
 
@@ -553,32 +264,21 @@ stow_dotfiles() {
 }
 
 # ─────────────────────────────────────────────
-# Step 4 — Python tools via uv
+# Step 5 — Python tools via uv
 # ─────────────────────────────────────────────
 
 install_python_tools() {
   print_step "Installing Python tools via uv"
 
   if ! command_exists uv; then
-    print_error "uv is not installed — should have been installed via Brewfile"
-    return 1
+    print_warning "uv is not installed — skipping Python tools"
+    return 0
   fi
 
   print_info "Installing sqlit (SQL TUI)..."
   uv tool install sqlit-tui &&
     print_success "sqlit installed" ||
     print_warning "Failed to install sqlit"
-}
-
-# ─────────────────────────────────────────────
-# Step 5 — LSP servers + formatters
-# ─────────────────────────────────────────────
-
-install_lsp_and_formatters() {
-  print_step "Installing LSP servers and formatters"
-  _install_all_lsp
-  _install_all_fmt
-  print_success "LSP servers and formatters installed"
 }
 
 # ─────────────────────────────────────────────
@@ -633,39 +333,50 @@ generate_ssh_key() {
 }
 
 # ─────────────────────────────────────────────
-# Step 7 — Zsh shell
+# LSP installation instructions
 # ─────────────────────────────────────────────
 
-setup_zsh_shell() {
-  print_step "Setting up zsh as default shell"
+_print_lsp_instructions() {
+  print_header "LSP Servers & Formatters — Manual Installation Required"
+  echo ""
+  print_info "Install the following tools to enable LSP support in Neovim."
+  echo ""
 
-  if ! command_exists zsh; then
-    print_error "zsh is not installed"
-    return 1
+  if [[ "$OS" == "macos" ]]; then
+    echo -e "  ${BOLD}Via Homebrew:${RESET}"
+    echo "    brew install lua-language-server"
+    echo "    brew install pyright"
+    echo "    brew install bash-language-server"
+    echo "    brew install stylua"
+    echo "    brew install shfmt"
+    echo "    brew install ruff"
+    echo ""
+    echo -e "  ${BOLD}Via npm / bun:${RESET}"
+    echo "    npm install -g typescript-language-server typescript"
+    echo "    npm install -g vscode-langservers-extracted"
+    echo "    npm install -g @tailwindcss/language-server"
+    echo "    npm install -g oxlint"
+    echo "    npm install -g @fsouza/prettierd"
+  elif [[ "$OS" == "arch" ]]; then
+    echo -e "  ${BOLD}Via pacman:${RESET}"
+    echo "    sudo pacman -S lua-language-server"
+    echo "    sudo pacman -S pyright"
+    echo "    sudo pacman -S bash-language-server"
+    echo "    sudo pacman -S stylua"
+    echo "    sudo pacman -S shfmt"
+    echo "    sudo pacman -S ruff"
+    echo ""
+    echo -e "  ${BOLD}Via npm / bun:${RESET}"
+    echo "    npm install -g typescript-language-server typescript"
+    echo "    npm install -g vscode-langservers-extracted"
+    echo "    npm install -g @tailwindcss/language-server"
+    echo "    npm install -g oxlint"
+    echo "    npm install -g @fsouza/prettierd"
   fi
 
-  local zsh_path
-  zsh_path=$(command -v zsh)
-
-  if ! grep -q "$zsh_path" /etc/shells; then
-    print_info "Adding zsh to /etc/shells..."
-    echo "$zsh_path" | sudo tee -a /etc/shells >/dev/null
-    print_success "zsh added to /etc/shells"
-  fi
-
-  if [[ "$SHELL" != "$zsh_path" ]]; then
-    chsh -s "$zsh_path" &&
-      print_success "Default shell changed to zsh — log out and back in to apply" ||
-      {
-        print_error "Failed to change default shell"
-        return 1
-      }
-  else
-    print_success "zsh is already the default shell"
-  fi
-
-  mkdir -p "${HOME}/.local/share/zsh"
-  print_success "zsh history directory created"
+  echo ""
+  print_info "Once installed, open Neovim and run :checkhealth vim.lsp to verify."
+  echo ""
 }
 
 # =============================================================================
@@ -679,25 +390,22 @@ setup_zsh_shell() {
 cmd_init() {
   print_header "Initializing dotfiles — ${OS}"
 
+  install_xcode_tools || return 1
   install_homebrew || return 1
   install_packages || return 1
   stow_dotfiles || return 1
   install_python_tools || print_warning "Python tools failed (continuing)"
 
-  if [[ "${SKIP_LSP:-}" != "true" ]]; then
-    install_lsp_and_formatters || print_warning "LSP install failed (continuing)"
-  fi
-
   if [[ "${SKIP_SSH:-}" != "true" ]]; then
     generate_ssh_key || print_warning "SSH key failed (continuing)"
   fi
 
-  setup_zsh_shell || print_warning "zsh setup failed (continuing)"
-
   print_header "Done! 🎉"
   echo ""
-  print_info "Restart your terminal to start using zsh."
+  print_info "Restart your terminal then open Neovim — plugins will install automatically."
   print_info "Run './install doctor' to verify the installation."
+
+  _print_lsp_instructions
 }
 
 # ─────────────────────────────────────────────
@@ -707,7 +415,6 @@ cmd_init() {
 cmd_update() {
   print_header "Updating dotfiles"
 
-  # Pull latest dotfiles
   print_info "Pulling latest changes..."
   git -C "$DOTFILES_DIR" pull &&
     print_success "Repository updated" ||
@@ -716,12 +423,10 @@ cmd_update() {
       return 1
     }
 
-  # Re-stow in case new files were added
   if confirm "Re-stow dotfiles?" "y"; then
     stow_dotfiles
   fi
 
-  # mise — update runtimes (node lts, bun latest, python latest)
   if command_exists mise; then
     if confirm "Update mise runtimes (node, bun, python)?" "y"; then
       mise upgrade &&
@@ -730,7 +435,6 @@ cmd_update() {
     fi
   fi
 
-  # Homebrew
   if command_exists brew; then
     if confirm "Update Homebrew packages?" "y"; then
       brew update && brew upgrade &&
@@ -739,7 +443,6 @@ cmd_update() {
     fi
   fi
 
-  # bun or npm global packages
   if command_exists bun; then
     if confirm "Update global bun packages?" "y"; then
       bun update -g &&
@@ -766,7 +469,6 @@ cmd_doctor() {
 
   local issues=0
 
-  # Core tools
   echo ""
   print_info "Core tools:"
   local tools=("brew" "stow" "zsh" "git" "nvim" "tmux" "mise" "uv" "starship" "fzf" "rg" "bun")
@@ -779,7 +481,6 @@ cmd_doctor() {
     fi
   done
 
-  # Default shell
   echo ""
   print_info "Shell:"
   if [[ "$SHELL" == "$(command -v zsh 2>/dev/null)" ]]; then
@@ -788,7 +489,6 @@ cmd_doctor() {
     print_warning "zsh is not the default shell (current: $SHELL)"
   fi
 
-  # SSH key
   echo ""
   print_info "SSH:"
   if [[ -f "${HOME}/.ssh/id_ed25519" ]]; then
@@ -797,7 +497,6 @@ cmd_doctor() {
     print_warning "No SSH key — run './install gen-ssh-key'"
   fi
 
-  # Broken symlinks
   echo ""
   print_info "Symlinks:"
   local broken=0
@@ -808,7 +507,6 @@ cmd_doctor() {
     print_success "No broken symlinks" ||
     print_warning "$broken broken symlink(s) found"
 
-  # LSP servers
   echo ""
   print_info "LSP servers:"
   local lsp_bins=(
@@ -832,14 +530,13 @@ cmd_doctor() {
       }
   done
 
-  # Formatters
   echo ""
   print_info "Formatters:"
-  for name in "${FMT_KEYS[@]}"; do
-    command_exists "$name" &&
-      print_success "$name" ||
+  for tool in prettierd stylua shfmt ruff; do
+    command_exists "$tool" &&
+      print_success "$tool" ||
       {
-        print_warning "$name not found"
+        print_warning "$tool not found"
         ((++issues))
       }
   done
@@ -847,7 +544,7 @@ cmd_doctor() {
   echo ""
   [[ $issues -eq 0 ]] &&
     print_success "All checks passed ✨" ||
-    print_error "$issues issue(s) found — run './install lsp --check' for details"
+    print_error "$issues issue(s) found"
 }
 
 # ─────────────────────────────────────────────
@@ -857,123 +554,6 @@ cmd_doctor() {
 cmd_stow() {
   print_header "Stowing dotfiles"
   stow_dotfiles
-}
-
-# ─────────────────────────────────────────────
-# lsp
-# ─────────────────────────────────────────────
-
-cmd_lsp() {
-  local flag="${1:-}"
-
-  case "$flag" in
-  --all)
-    print_header "Installing all LSP servers and formatters"
-    _install_all_lsp
-    _install_all_fmt
-    print_success "Done"
-    ;;
-
-  --check)
-    print_header "LSP and formatter status"
-    echo ""
-    print_info "LSP Servers:"
-    for name in "${LSP_KEYS[@]}"; do
-      local bin="${name//_/-}"
-      [[ "$name" == "ts_ls" ]] && bin="typescript-language-server"
-      [[ "$name" == "cssls" ]] && bin="vscode-css-language-server"
-      [[ "$name" == "html" ]] && bin="vscode-html-language-server"
-      [[ "$name" == "tailwindcss" ]] && bin="tailwindcss-language-server"
-      [[ "$name" == "bashls" ]] && bin="bash-language-server"
-      command_exists "$bin" &&
-        print_success "$name (${LSP_DESC[$name]})" ||
-        print_warning "$name not found (${LSP_DESC[$name]})"
-    done
-    echo ""
-    print_info "Formatters:"
-    for name in "${FMT_KEYS[@]}"; do
-      command_exists "$name" &&
-        print_success "$name (${FMT_DESC[$name]})" ||
-        print_warning "$name not found (${FMT_DESC[$name]})"
-    done
-    echo ""
-    ;;
-
-  *)
-    # Interactive menu
-    print_header "LSP Servers & Formatters"
-    echo -e "  OS             : ${CYAN}$OS${RESET}"
-    command_exists bun &&
-      echo -e "  Package manager: ${CYAN}bun${RESET}" ||
-      echo -e "  Package manager: ${CYAN}npm${RESET}"
-    echo ""
-
-    local all_keys=()
-    local i=1
-
-    print_info "LSP Servers:"
-    for name in "${LSP_KEYS[@]}"; do
-      all_keys+=("lsp:$name")
-      local status
-      command_exists "${name//_/-}" &&
-        status="${GREEN}✓${RESET}" ||
-        status="${YELLOW}✗${RESET}"
-      printf "  %b %2d) %-15s %s\n" "$status" "$i" "$name" "${LSP_DESC[$name]}"
-      ((i++))
-    done
-
-    echo ""
-    print_info "Formatters:"
-    for name in "${FMT_KEYS[@]}"; do
-      all_keys+=("fmt:$name")
-      local status
-      command_exists "$name" &&
-        status="${GREEN}✓${RESET}" ||
-        status="${YELLOW}✗${RESET}"
-      printf "  %b %2d) %-15s %s\n" "$status" "$i" "$name" "${FMT_DESC[$name]}"
-      ((i++))
-    done
-
-    echo ""
-    echo -e "  ${CYAN}a${RESET}) Install / update all"
-    echo -e "  ${CYAN}q${RESET}) Quit"
-    echo ""
-    read -rp "Select tools (e.g: 1 3 5 or 'a'): " selection
-
-    [[ "$selection" == "q" ]] && {
-      print_info "Cancelled"
-      return 0
-    }
-    [[ "$selection" == "a" ]] && {
-      _install_all_lsp
-      _install_all_fmt
-      return 0
-    }
-
-    echo ""
-    for num in $selection; do
-      if ! [[ "$num" =~ ^[0-9]+$ ]]; then
-        print_warning "Invalid: $num — skipping"
-        continue
-      fi
-      local idx=$((num - 1))
-      if ((idx < 0 || idx >= ${#all_keys[@]})); then
-        print_warning "Out of range: $num — skipping"
-        continue
-      fi
-      local entry="${all_keys[$idx]}"
-      local type="${entry%%:*}"
-      local name="${entry##*:}"
-      if [[ "$type" == "lsp" ]]; then
-        print_info "→ $name (${LSP_DESC[$name]})"
-        install_lsp "$name" || print_warning "Failed: $name"
-      else
-        print_info "→ $name (${FMT_DESC[$name]})"
-        install_fmt "$name" || print_warning "Failed: $name"
-      fi
-    done
-    ;;
-  esac
 }
 
 # ─────────────────────────────────────────────
@@ -1031,37 +611,24 @@ cmd_help() {
   echo "    ./install [OPTIONS] COMMAND [ARGS]"
   echo ""
   echo -e "${BOLD}COMMANDS:${RESET}"
-  printf "  ${CYAN}%-30s${RESET} %s\n" "init" "Full setup (Homebrew, packages, stow, LSP, SSH, zsh)"
+  printf "  ${CYAN}%-30s${RESET} %s\n" "init" "Full setup (Xcode, Homebrew, packages, stow, SSH, zsh)"
   printf "  ${CYAN}%-30s${RESET} %s\n" "update" "Pull latest + update packages + mise runtimes"
   printf "  ${CYAN}%-30s${RESET} %s\n" "doctor" "Check installation health"
   printf "  ${CYAN}%-30s${RESET} %s\n" "stow" "Re-create dotfile symlinks"
-  printf "  ${CYAN}%-30s${RESET} %s\n" "lsp" "Install LSP servers interactively"
-  printf "  ${CYAN}%-30s${RESET} %s\n" "lsp --all" "Install / update all LSP servers + formatters"
-  printf "  ${CYAN}%-30s${RESET} %s\n" "lsp --check" "Check LSP and formatter status"
   printf "  ${CYAN}%-30s${RESET} %s\n" "retry" "Retry failed Homebrew package installations"
   printf "  ${CYAN}%-30s${RESET} %s\n" "gen-ssh-key" "Generate SSH key for GitHub"
   printf "  ${CYAN}%-30s${RESET} %s\n" "help" "Show this help"
   echo ""
   echo -e "${BOLD}OPTIONS:${RESET}"
   printf "  ${CYAN}%-30s${RESET} %s\n" "--skip-ssh" "Skip SSH key generation during init"
-  printf "  ${CYAN}%-30s${RESET} %s\n" "--skip-lsp" "Skip LSP installation during init"
   printf "  ${CYAN}%-30s${RESET} %s\n" "--version" "Show version"
   echo ""
   echo -e "${BOLD}EXAMPLES:${RESET}"
   echo "    ./install init                # Full setup on a new Mac"
   echo "    ./install init --skip-ssh     # Setup without SSH key"
-  echo "    ./install init --skip-lsp     # Setup without LSP servers"
-  echo "    ./install lsp                 # Manage LSP servers interactively"
-  echo "    ./install lsp --all           # Install all LSP servers + formatters"
-  echo "    ./install lsp --check         # See what is installed"
   echo "    ./install update              # Update everything"
   echo "    ./install doctor              # Check everything is working"
   echo "    ./install retry               # Retry failed packages"
-  echo ""
-  echo -e "${BOLD}NOTES:${RESET}"
-  echo "    - JS packages are installed via bun if available, npm otherwise"
-  echo "    - mise manages node / bun / python runtime versions"
-  echo "    - Failed brew packages are saved and can be retried with 'retry'"
   echo ""
   echo -e "${BOLD}CONFIGURATION:${RESET}"
   echo "    Dotfiles : ${DOTFILES_DIR}"
@@ -1075,15 +642,10 @@ cmd_help() {
 # =============================================================================
 
 main() {
-  # Parse global options
   while [[ $# -gt 0 ]]; do
     case "$1" in
     --skip-ssh)
       export SKIP_SSH=true
-      shift
-      ;;
-    --skip-lsp)
-      export SKIP_LSP=true
       shift
       ;;
     --version)
@@ -1106,7 +668,6 @@ main() {
   update) cmd_update "$@" ;;
   doctor) cmd_doctor "$@" ;;
   stow) cmd_stow "$@" ;;
-  lsp) cmd_lsp "$@" ;;
   retry) cmd_retry "$@" ;;
   gen-ssh-key) cmd_gen_ssh_key "$@" ;;
   help) cmd_help ;;
