@@ -7,6 +7,4 @@ home/.config/tmux/plugins/
 home/.config/tmux/resurrect/
 
 # Binaires installés localement
-home/.local/bin/
-home/.local/share/
-home/.local/state/
+home/.local/
