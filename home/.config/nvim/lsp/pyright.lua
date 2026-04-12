@@ -12,28 +12,29 @@
 
 ---@type vim.lsp.Config
 return {
-  cmd = { "pyright-langserver", "--stdio" },
-  workspace_required = true,
-  root_markers = {
-    "pyrightconfig.json",
-    "pyproject.toml",
-    "setup.py",
-    "setup.cfg",
-    "requirements.txt",
-    "Pipfile",
-  },
-  settings = {
-    python = {
-      analysis = {
-        typeCheckingMode = "standard",
-        autoSearchPaths = true,
-        useLibraryCodeForTypes = true,
-        diagnosticMode = "workspace",
-      },
-    },
-  },
-  on_attach = function(client)
-    -- Disable formatting — handled by ruff via conform
-    client.server_capabilities.documentFormattingProvider = false
-  end,
+	cmd = { "pyright-langserver", "--stdio" },
+	filetypes = { "python" },
+	root_markers = {
+		"pyrightconfig.json",
+		"pyproject.toml",
+		"setup.py",
+		"setup.cfg",
+		"requirements.txt",
+		"Pipfile",
+		".git",
+	},
+	settings = {
+		python = {
+			analysis = {
+				typeCheckingMode = "standard",
+				autoSearchPaths = true,
+				useLibraryCodeForTypes = true,
+				diagnosticMode = "openFilesOnly",
+			},
+		},
+	},
+	on_attach = function(client)
+		-- Disable formatting — handled by ruff via conform
+		client.server_capabilities.documentFormattingProvider = false
+	end,
 }
